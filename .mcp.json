@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "dnd-wiki": {
+      "command": "uv",
+      "args": ["run", "dm-companion-mcp"]
+    }
+  }
+}

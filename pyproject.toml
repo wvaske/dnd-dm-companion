@@ -1,0 +1,32 @@
+[project]
+name = "dnd-dm-companion"
+version = "0.1.0"
+description = "AI DM companion for D&D: MediaWiki-backed campaign lore, Zoom transcript ingestion, and agent skills"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "mwclient>=0.11",
+    "mcp>=1.2.0",
+    "python-dotenv>=1.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.scripts]
+dmc = "dm_companion.cli:main"
+dm-companion-mcp = "dm_companion.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dm_companion"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
