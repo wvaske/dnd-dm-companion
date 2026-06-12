@@ -11,12 +11,14 @@ the core workflow of the companion. Work in four phases and report at the end.
 ## Phase 1 — Convert (deterministic, do not do this by hand)
 
 ```bash
-dmc transcript <path-to.vtt> -o sessions/session-<N>.md
+uv run dmc transcript <path-to.vtt> -o sessions/session-<N>.md
 ```
 
 The output header lists Zoom accounts and talk time. Read the markdown
 transcript before going further. If the session number `<N>` is unknown,
-check the wiki: `list_pages(prefix="Session")` and take the next number.
+check the wiki: `list_pages(prefix="Session")`, parse the numbers, and take
+the highest + 1. (Titles come back alphabetically — "Session 9" sorts *after*
+"Session 10" — so compare numerically, never take the last list entry.)
 
 ## Phase 2 — Attribute speakers
 
@@ -104,6 +106,6 @@ pages are formatted and match them.)
 
 Finish with a summary for the DM: pages created, pages edited (with edit
 summaries), images uploaded, attribution uncertainties flagged in Phase 2,
-and anything that needs a human decision. Remind the DM to run `dmc index`
-so semantic search picks up the new lore. Never delete or blank a page in
-this workflow.
+and anything that needs a human decision. Remind the DM to run
+`uv run dmc index` so semantic search picks up the new lore. Never delete or
+blank a page in this workflow.

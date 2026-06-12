@@ -13,7 +13,7 @@ intentional, never to "correct" the wiki toward canon.
 ## Prerequisites
 
 Official material must be in the lore index: either ingested sourcebooks
-(`dmc ingest-book`) or reference wiki namespaces. If
+(`uv run dmc ingest-book`) or reference wiki namespaces. If
 `find_related_lore(scope="official")` comes back empty, tell the DM what's
 missing and how to add it; don't substitute your own training-data knowledge
 of D&D lore as if it were the indexed source — quote only what the index

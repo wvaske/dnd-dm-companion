@@ -10,7 +10,11 @@ established lore; flag gaps instead.
 
 ## Gather
 
-1. `list_pages(prefix="Session")` → read the **two most recent** session logs.
+1. Find the latest session logs: `list_pages(prefix="Session")`, then pick
+   the **two highest session numbers by numeric comparison** — titles come
+   back alphabetically, where "Session 9" sorts after "Session 10", so never
+   trust list order. (Cross-check with `recent_changes` if numbering looks
+   odd.) Read both logs.
 2. From the latest log, note where the party is and what they said they'd do next.
 3. Pull open threads:
    - `search_wiki("incategory:Quests")` and read quests not marked complete
@@ -21,7 +25,7 @@ established lore; flag gaps instead.
    surface forgotten lore that keyword search misses. Use `scope="campaign"`
    for the table's own history; `scope="official"` can supply published
    material to draw on (mark such suggestions as from the books). If it
-   reports an empty or stale index, suggest the DM run `dmc index`.
+   reports an empty or stale index, suggest the DM run `uv run dmc index`.
 
 ## Build the prep doc
 
