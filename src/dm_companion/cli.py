@@ -39,34 +39,98 @@ def cmd_transcript(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_index(args: argparse.Namespace) -> int:
-    from dm_companion.embeddings import EmbeddingsClient, EmbeddingsError
-    from dm_companion.lore_index import LoreIndex, build_index
+def _open_semantic_stack():
+    """Settings + embedder + vector store, with friendly config errors."""
+    from dm_companion.embeddings import EmbeddingsClient
+    from dm_companion.vector_store import open_vector_store
     from dm_companion.wiki import WikiClient
 
     wiki = WikiClient()
+    embedder = EmbeddingsClient.from_settings(wiki.settings)
+    store = open_vector_store(wiki.settings)
+    return wiki, embedder, store
+
+
+def cmd_index(args: argparse.Namespace) -> int:
+    from dm_companion.embeddings import EmbeddingsError
+    from dm_companion.indexing import sync_wiki
+    from dm_companion.vector_store import VectorStoreError
+
     try:
-        embedder = EmbeddingsClient.from_settings(wiki.settings)
-    except EmbeddingsError as exc:
+        wiki, embedder, store = _open_semantic_stack()
+    except (EmbeddingsError, VectorStoreError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 
-    index = LoreIndex(args.db or wiki.settings.index_path)
+    namespaces = (
+        tuple(int(ns) for ns in args.namespaces.split(","))
+        if args.namespaces
+        else wiki.settings.index_namespaces
+    )
     try:
-        summary = build_index(wiki, embedder, index, full=args.full, progress=print)
+        summary = sync_wiki(
+            wiki, embedder, store, namespaces=namespaces, full=args.full, progress=print
+        )
     finally:
-        index.close()
+        store.close()
     print(
         f"Done: {summary['embedded']} embedded, {summary['unchanged']} unchanged, "
         f"{len(summary['removed'])} removed (wiki has {summary['total_pages']} pages)"
     )
-    for title in summary["removed"]:
-        print(f"  removed from index: {title}")
+    for doc_id in summary["removed"]:
+        print(f"  removed from index: {doc_id}")
+    return 0
+
+
+def cmd_ingest_book(args: argparse.Namespace) -> int:
+    from dm_companion.embeddings import EmbeddingsError
+    from dm_companion.indexing import IndexingError, ingest_book
+    from dm_companion.vector_store import VectorStoreError
+
+    try:
+        _wiki, embedder, store = _open_semantic_stack()
+    except (EmbeddingsError, VectorStoreError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        summary = ingest_book(
+            args.file, title=args.title, embedder=embedder, store=store,
+            full=args.full, progress=print,
+        )
+    except IndexingError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        store.close()
+    print(
+        f"Done: {summary['source']} — {summary['chunks']} chunks "
+        f"({summary['embedded']} embedded, {summary['unchanged']} unchanged, "
+        f"{len(summary['removed'])} stale removed)"
+    )
+    return 0
+
+
+def cmd_remove_book(args: argparse.Namespace) -> int:
+    from dm_companion.indexing import slugify
+    from dm_companion.vector_store import VectorStoreError, open_vector_store
+    from dm_companion.wiki import WikiClient
+
+    try:
+        store = open_vector_store(WikiClient().settings)
+    except VectorStoreError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    try:
+        deleted = store.delete_by_prefix(f"book::{slugify(args.title)}::")
+    finally:
+        store.close()
+    print(f"Removed {deleted} chunks for {args.title!r}")
     return 0
 
 
 def cmd_check(_args: argparse.Namespace) -> int:
-    from dm_companion.lore_index import LoreIndex
+    from dm_companion.vector_store import open_vector_store
     from dm_companion.wiki import WikiClient
 
     client = WikiClient()
@@ -75,14 +139,18 @@ def cmd_check(_args: argparse.Namespace) -> int:
     print(f"Bot user:  {settings.bot_username or '(anonymous)'}")
     print(f"Read-only: {settings.read_only}")
     if settings.embeddings_url:
-        index = LoreIndex(settings.index_path)
-        stats = index.stats()
-        index.close()
+        store = open_vector_store(settings)
+        try:
+            stats = store.stats()
+        finally:
+            store.close()
         print(
-            f"Semantic:  {settings.embeddings_url} ({settings.embeddings_model}), "
-            f"index has {stats['pages']} pages"
+            f"Semantic:  {settings.embeddings_url} ({settings.embeddings_model}) "
+            f"-> {stats['backend']} backend, {stats['documents']} documents"
             + (f", built {stats['indexed_at']}" if stats["indexed_at"] else " — run: dmc index")
         )
+        for source, count in sorted(stats["sources"].items()):
+            print(f"             {source}: {count}")
     else:
         print("Semantic:  not configured (set EMBEDDINGS_URL / EMBEDDINGS_MODEL to enable)")
     try:
@@ -113,15 +181,37 @@ def main(argv: list[str] | None = None) -> int:
     p_transcript.set_defaults(func=cmd_transcript)
 
     p_index = sub.add_parser(
-        "index", help="Build/refresh the semantic lore index (incremental)"
+        "index", help="Sync wiki pages into the semantic lore index (incremental)"
     )
     p_index.add_argument(
         "--full",
         action="store_true",
         help="Re-embed every page (required after changing EMBEDDINGS_MODEL)",
     )
-    p_index.add_argument("--db", help="Index file path (default: $DMC_INDEX_PATH or lore_index.db)")
+    p_index.add_argument(
+        "--namespaces",
+        help='Wiki namespace ids to index, e.g. "0,3000" (default: $INDEX_NAMESPACES or 0)',
+    )
     p_index.set_defaults(func=cmd_index)
+
+    p_book = sub.add_parser(
+        "ingest-book",
+        help="Add a sourcebook (.md/.txt) to the lore index as official reference material",
+    )
+    p_book.add_argument("file", help="Markdown or plain-text export of the book")
+    p_book.add_argument(
+        "--title", required=True, help='Book title, e.g. "Player\'s Handbook"'
+    )
+    p_book.add_argument(
+        "--full", action="store_true", help="Re-embed all chunks even if unchanged"
+    )
+    p_book.set_defaults(func=cmd_ingest_book)
+
+    p_rm_book = sub.add_parser(
+        "remove-book", help="Remove an ingested sourcebook from the lore index"
+    )
+    p_rm_book.add_argument("title", help="The title used at ingest time")
+    p_rm_book.set_defaults(func=cmd_remove_book)
 
     p_check = sub.add_parser("check", help="Verify wiki connectivity and credentials")
     p_check.set_defaults(func=cmd_check)

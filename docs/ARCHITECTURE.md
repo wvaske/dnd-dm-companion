@@ -111,29 +111,59 @@ players share accounts). So the pipeline splits exactly at that line:
 Raw recordings and transcripts stay out of git (`sessions/` is ignored);
 the wiki is where session knowledge persists.
 
-### Semantic search: local index, provider-agnostic embeddings
+### Semantic search: provider-agnostic embeddings, pluggable storage
 
 CirrusSearch answers "which pages contain these words"; prep questions are
 often "which pages are *about* this" — so `find_related_lore` is a separate,
 embeddings-based tool rather than a CirrusSearch feature.
 
-Two choices worth recording:
+Choices worth recording:
 
 - **Embeddings over plain HTTP** (`embeddings.py`): any OpenAI-compatible
   `/v1/embeddings` endpoint — Ollama locally, LiteLLM, OpenRouter, OpenAI.
   This keeps the no-LLM-SDK rule intact and provider choice with the user,
   same as chat models. Configured by `EMBEDDINGS_URL`/`EMBEDDINGS_MODEL`.
-- **Local SQLite index + in-process cosine** (`lore_index.py`), *not*
-  OpenSearch k-NN, even though the wiki's OpenSearch could do it. At
-  campaign-wiki scale (hundreds of pages) brute force is instantaneous, the
-  index is derived data anyone can rebuild with `dmc index`, and other DMs
-  adopting this project don't need an OpenSearch deployment with the k-NN
-  plugin. Revisit only if a wiki reaches tens of thousands of pages.
+- **Pluggable vector storage** (`vector_store.py`), selected by
+  `VECTOR_BACKEND` — callers never branch on the backend:
+  - `sqlite` (default): one local file, in-process cosine. Zero
+    infrastructure, instantaneous at campaign-wiki scale (hundreds of
+    pages), rebuildable with `dmc index`. Other DMs adopting the project
+    need nothing installed.
+  - `opensearch`: k-NN index over plain REST (no SDK), for corpora past
+    brute force — in practice, when full sourcebooks are ingested
+    (thousands of chunks). The OpenSearch instance already backing
+    CirrusSearch can host it. Scoped queries over-fetch and filter
+    client-side so the 1.x line (no efficient k-NN filtering) works too.
 
 Indexing (`dmc index`) is deterministic-side, incremental by content hash,
 one vector per page (title prepended, truncated at 6k chars). It's a CLI
 command, not an MCP tool: first runs take minutes (network + embedding), which
 fits a shell command better than a tool call inside a chat turn.
+
+### Official source material: two ingestion paths, one scope model
+
+The point of having sourcebooks in the system is comparing campaign lore to
+canon (the `canon-check` skill). Every indexed document carries a source tag,
+and the rule is deliberately crisp: **the wiki main namespace is campaign
+lore; everything else is reference material.**
+
+| Where the material lives | How it's indexed | Source tag | Scope |
+|---|---|---|---|
+| Wiki main namespace | `dmc index` | `wiki` | campaign |
+| DM-only wiki namespace (e.g. `Sourcebook:`) | `dmc index` with the namespace id in `INDEX_NAMESPACES` | `wiki:Sourcebook` | official |
+| File on disk (.md/.txt) | `dmc ingest-book --title "..."` | `book:<slug>` | official |
+
+The wiki path suits material you want browsable and editable (and lets
+MediaWiki's Lockdown extension hide the namespace from players); the direct
+path suits whole books — no wiki bloat, no pasting a 300-page PDF into pages,
+and removable in one command (`dmc remove-book`). Books are chunked by
+markdown heading with breadcrumbs ("PHB — Chapter 9 > Combat > Cover") so
+retrieval hits stay citable. PDF conversion stays outside (`pdftotext`,
+pandoc): text extraction quality needs human eyes anyway.
+
+`find_related_lore(scope=...)` exposes the split: "campaign" for table
+canon, "official" for published canon, "all" for both. Re-ingest of an
+updated export is incremental (chunk content hashes); stale chunks are pruned.
 
 ### Image upload: same rails as page writes
 

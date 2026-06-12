@@ -69,32 +69,43 @@ def write_page(
 
 
 @mcp.tool()
-def find_related_lore(query: str, limit: int = 8) -> dict:
-    """Semantic search over campaign lore — finds pages related in *meaning*.
+def find_related_lore(query: str, limit: int = 8, scope: str = "all") -> dict:
+    """Semantic search over lore — finds documents related in *meaning*.
 
     Complements search_wiki (keyword/CirrusSearch): use this for conceptual
     questions like "what do we know that connects to the Cult of the Dragon?"
-    where the relevant pages may not contain the query's words. Results come
-    from a local embeddings index built with `dmc index`; if results seem
-    stale or empty, ask the DM to re-run it.
+    where the relevant pages may not contain the query's words.
+
+    `scope` separates what the table invented from what the books say:
+      - "campaign": this campaign's wiki lore only
+      - "official": reference material — ingested sourcebooks (dmc ingest-book)
+        and reference wiki namespaces. Use when checking against canon.
+      - "all" (default): both; each match carries its `source`.
+
+    The index is built with `dmc index` / `dmc ingest-book`; if results seem
+    stale or empty, ask the DM to re-run those.
     """
     from dm_companion.embeddings import EmbeddingsClient
-    from dm_companion.lore_index import LoreIndex
+    from dm_companion.vector_store import open_vector_store
 
     settings = _wiki().settings
-    index = LoreIndex(settings.index_path)
+    store = open_vector_store(settings)
     try:
-        stats = index.stats()
-        if stats["pages"] == 0:
+        stats = store.stats()
+        if stats["documents"] == 0:
             return {
                 "matches": [],
-                "error": "The lore index is empty. Build it with: dmc index",
+                "error": "The lore index is empty. Build it with: dmc index "
+                "(and dmc ingest-book for sourcebooks)",
             }
         embedder = EmbeddingsClient.from_settings(settings)
         query_vector = embedder.embed([query])[0]
-        return {"matches": index.search(query_vector, limit=limit), "index": stats}
+        return {
+            "matches": store.search(query_vector, limit=limit, scope=scope),
+            "index": stats,
+        }
     finally:
-        index.close()
+        store.close()
 
 
 @mcp.tool()

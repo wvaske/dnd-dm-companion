@@ -96,10 +96,14 @@ class WikiClient:
         name = category.removeprefix("Category:")
         return [p.name for p in islice(self.site.categories[name], limit)]
 
-    def list_pages(self, prefix: str = "", limit: int | None = 100) -> list[str]:
+    def list_pages(
+        self, prefix: str = "", limit: int | None = 100, namespace: int = 0
+    ) -> list[str]:
         """List page titles; limit=None returns every page (used by the indexer)."""
-        pages = self.site.allpages(prefix=prefix) if prefix else self.site.allpages()
-        return [p.name for p in islice(pages, limit)]
+        kwargs = {"namespace": str(namespace)}
+        if prefix:
+            kwargs["prefix"] = prefix
+        return [p.name for p in islice(self.site.allpages(**kwargs), limit)]
 
     def recent_changes(self, limit: int = 25) -> list[dict]:
         changes = []

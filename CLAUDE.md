@@ -11,8 +11,10 @@ is deliberate.
 - `src/dm_companion/server.py` — MCP server (`dm-companion-mcp`); tools stay
   low-level, entity semantics belong in skills
 - `src/dm_companion/transcripts/` + `cli.py` — deterministic Zoom VTT pipeline (`dmc`)
-- `src/dm_companion/embeddings.py` + `lore_index.py` — semantic search;
-  embeddings via OpenAI-compatible HTTP only (no SDK), local SQLite index
+- `src/dm_companion/embeddings.py`, `vector_store.py`, `indexing.py` —
+  semantic search; embeddings via OpenAI-compatible HTTP only (no SDK);
+  storage pluggable (sqlite default, opensearch for sourcebook-scale corpora);
+  main wiki namespace = campaign lore, all other sources = official/reference
 - `skills/` — workflows as SKILL.md (canonical; `.claude/skills` and
   `.opencode/skill` are symlinks to it)
 
@@ -24,6 +26,7 @@ uv run pytest          # tests
 uv run dmc check       # wiki connectivity (needs .env)
 uv run dmc transcript <file.vtt> -o out.md
 uv run dmc index       # refresh semantic lore index (needs EMBEDDINGS_* in .env)
+uv run dmc ingest-book book.md --title "..."   # add official material to the index
 ```
 
 ## Rules

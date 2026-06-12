@@ -32,9 +32,11 @@ their rationale.
 | `src/dm_companion/wiki/` | MediaWiki client: search (CirrusSearch), read, write with mandatory edit summaries, image upload, read-only mode |
 | `src/dm_companion/server.py` | MCP server exposing the wiki to any MCP host |
 | `src/dm_companion/transcripts/` | Zoom WebVTT parser: cue merging, speaker stats, markdown output |
-| `src/dm_companion/embeddings.py` + `lore_index.py` | Semantic search: local SQLite vector index over page content, embeddings via any OpenAI-compatible endpoint |
-| `src/dm_companion/cli.py` | `dmc` CLI: `dmc transcript`, `dmc index`, `dmc check` |
-| `skills/` | Agent workflows as SKILL.md: `ingest-session`, `session-prep`, `lore-audit` |
+| `src/dm_companion/embeddings.py` | Embeddings via any OpenAI-compatible endpoint (plain HTTP, no SDK) |
+| `src/dm_companion/vector_store.py` | Pluggable vector storage: SQLite (default) or OpenSearch k-NN |
+| `src/dm_companion/indexing.py` | Index pipeline: wiki sync + sourcebook chunking/ingestion |
+| `src/dm_companion/cli.py` | `dmc` CLI: `transcript`, `index`, `ingest-book`, `remove-book`, `check` |
+| `skills/` | Agent workflows as SKILL.md: `ingest-session`, `session-prep`, `lore-audit`, `canon-check` |
 | `.mcp.json`, `opencode.json` | MCP server registration for Claude Code and opencode |
 | `campaign.example.yaml` | Roster template (Zoom account → player → character, colocation) |
 
@@ -74,7 +76,29 @@ uv run dmc index    # first run embeds every page; later runs only what changed
 ```
 
 Re-run `dmc index` after ingesting a session (the ingest skill reminds you).
-The index is a local gitignored SQLite file — safe to delete, cheap to rebuild.
+The default index is a local gitignored SQLite file — safe to delete, cheap to
+rebuild. For larger corpora set `VECTOR_BACKEND=opensearch` (the OpenSearch
+instance already backing CirrusSearch works; see `.env.example`).
+
+### Official sourcebooks (optional)
+
+Add published material so the `canon-check` skill can compare your campaign's
+lore against canon, via either path:
+
+```bash
+# Direct: chunk + embed a book export into the lore index (no wiki involved)
+pdftotext -layout phb.pdf phb.txt           # convert outside the companion
+uv run dmc ingest-book phb.txt --title "Player's Handbook"
+uv run dmc remove-book "Player's Handbook"  # clean removal any time
+```
+
+Or host it on the wiki: put the material in a custom namespace (restrict it
+from players with MediaWiki's Lockdown extension), add the namespace id to
+`INDEX_NAMESPACES` in `.env`, and `dmc index` picks it up. Either way, scoped
+search keeps the corpora separate: `find_related_lore(scope="campaign")` is
+your table's lore, `scope="official"` is the books. Sourcebooks at full size
+are thousands of chunks — that's when `VECTOR_BACKEND=opensearch` earns its
+keep, though SQLite holds up fine for a book or two.
 
 ## Choose your portal
 
@@ -122,6 +146,8 @@ uv run dmc index   # refresh semantic search after the wiki gets updated
 # Occasionally:
 #   "Audit the wiki"
 #       → lore-audit skill: contradictions, duplicates, orphan pages
+#   "How does our version of Leosin compare to the module?"
+#       → canon-check skill: campaign lore vs official sources, divergences cited
 ```
 
 ## Extending the companion

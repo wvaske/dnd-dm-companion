@@ -31,7 +31,17 @@ class Settings:
     embeddings_url: str = ""
     embeddings_model: str = ""
     embeddings_api_key: str = ""
+    # Vector storage: "sqlite" (default, zero infrastructure) or "opensearch"
+    # (for large corpora, e.g. full sourcebooks; plain REST, no SDK).
+    vector_backend: str = "sqlite"
     index_path: str = "lore_index.db"
+    opensearch_url: str = ""
+    opensearch_index: str = "dmc-lore"
+    opensearch_username: str = ""
+    opensearch_password: str = ""
+    # Wiki namespaces to index, comma-separated ids. 0 is the main namespace
+    # (campaign lore); any extra namespace is treated as reference material.
+    index_namespaces: tuple[int, ...] = (0,)
 
 
 def load_settings() -> Settings:
@@ -53,5 +63,13 @@ def load_settings() -> Settings:
         embeddings_url=os.environ.get("EMBEDDINGS_URL", "").strip().rstrip("/"),
         embeddings_model=os.environ.get("EMBEDDINGS_MODEL", "").strip(),
         embeddings_api_key=os.environ.get("EMBEDDINGS_API_KEY", "").strip(),
+        vector_backend=os.environ.get("VECTOR_BACKEND", "sqlite").strip().lower(),
         index_path=os.environ.get("DMC_INDEX_PATH", "lore_index.db").strip(),
+        opensearch_url=os.environ.get("OPENSEARCH_URL", "").strip().rstrip("/"),
+        opensearch_index=os.environ.get("OPENSEARCH_INDEX", "dmc-lore").strip(),
+        opensearch_username=os.environ.get("OPENSEARCH_USERNAME", "").strip(),
+        opensearch_password=os.environ.get("OPENSEARCH_PASSWORD", "").strip(),
+        index_namespaces=tuple(
+            int(ns) for ns in os.environ.get("INDEX_NAMESPACES", "0").split(",") if ns.strip()
+        ),
     )

@@ -18,8 +18,10 @@ established lore; flag gaps instead.
    - Recent wiki edits (`recent_changes`) — the DM may have planted new material since the session.
 4. Go beyond keywords with `find_related_lore`: query it with the session's
    themes ("betrayal in the merchant guild", "the black dragon mask") to
-   surface forgotten lore that keyword search misses. If it reports an empty
-   or stale index, suggest the DM run `dmc index`.
+   surface forgotten lore that keyword search misses. Use `scope="campaign"`
+   for the table's own history; `scope="official"` can supply published
+   material to draw on (mark such suggestions as from the books). If it
+   reports an empty or stale index, suggest the DM run `dmc index`.
 
 ## Build the prep doc
 
