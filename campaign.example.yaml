@@ -1,0 +1,33 @@
+# Campaign roster: maps Zoom accounts -> people -> characters.
+# Copy to campaign.yaml (gitignored) AND mirror it on the wiki as
+# "Campaign:Roster" — the ingest-session skill prefers the wiki copy so the
+# roster lives with the rest of the lore.
+#
+# This file is what makes colocated-speaker attribution possible: the skill
+# needs to know which Zoom account covers which humans.
+
+campaign: "Deez Nuts' Sword Coast Campaign"
+wiki: https://wiki.deeznuts.wiki
+
+dm:
+  name: Wes
+  zoom_account: "Wes Vaske"
+
+players:
+  - name: Alice
+    character: "Thia Moonbrook"          # link to wiki page title
+    zoom_account: "Wes Vaske"            # colocated with the DM, shares his mic
+    colocated: true
+  - name: Bob
+    character: "Grimble Ironfist"
+    zoom_account: "Bob Smith"            # remote, own account
+    colocated: false
+  - name: Carol
+    character: "Seraphine"
+    zoom_account: "Bob Smith"            # colocated with Bob
+    colocated: true
+
+# Attribution hints the skill can use for shared accounts (optional, helps a lot):
+attribution_hints:
+  - "Alice's character Thia is the party face; she does most NPC negotiation."
+  - "Carol tends to announce rolls as 'Sera rolled...'"

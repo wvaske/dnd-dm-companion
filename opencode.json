@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "dnd-wiki": {
+      "type": "local",
+      "command": ["uv", "run", "dm-companion-mcp"],
+      "enabled": true
+    }
+  }
+}

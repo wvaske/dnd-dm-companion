@@ -1,0 +1,170 @@
+# D&D DM Companion
+
+An AI companion for running D&D campaigns. The campaign wiki (MediaWiki) is
+the single source of truth for lore; Zoom session transcripts are the raw
+input; an LLM agent — running in whatever harness and on whatever model
+provider you prefer — does the work of turning sessions into lore and lore
+into prep.
+
+```
+Zoom recording (.vtt)
+      │  dmc transcript (deterministic parse/merge)
+      ▼
+clean markdown transcript
+      │  ingest-session skill (attribution, extraction — LLM judgment)
+      ▼
+┌────────────────────────────┐      ┌──────────────────────────────┐
+│  Agent harness (portal)    │ MCP  │  dm-companion-mcp server     │
+│  opencode + openchamber,   │─────▶│  search/read/write tools     │──▶ MediaWiki
+│  Claude Code, Claude       │      │  (mwclient, bot credentials) │    (source of truth)
+│  Desktop — your choice     │      └──────────────────────────────┘
+│  + skills/ (workflows)     │
+└────────────────────────────┘
+```
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design decisions and
+their rationale.
+
+## What's here
+
+| Path | What it is |
+|---|---|
+| `src/dm_companion/wiki/` | MediaWiki client: search (CirrusSearch), read, write with mandatory edit summaries, image upload, read-only mode |
+| `src/dm_companion/server.py` | MCP server exposing the wiki to any MCP host |
+| `src/dm_companion/transcripts/` | Zoom WebVTT parser: cue merging, speaker stats, markdown output |
+| `src/dm_companion/embeddings.py` | Embeddings via any OpenAI-compatible endpoint (plain HTTP, no SDK) |
+| `src/dm_companion/vector_store.py` | Pluggable vector storage: SQLite (default) or OpenSearch k-NN |
+| `src/dm_companion/indexing.py` | Index pipeline: wiki sync + sourcebook chunking/ingestion |
+| `src/dm_companion/cli.py` | `dmc` CLI: `transcript`, `index`, `ingest-book`, `remove-book`, `check` |
+| `skills/` | Agent workflows as SKILL.md: `ingest-session`, `session-prep`, `lore-audit`, `canon-check` |
+| `.mcp.json`, `opencode.json` | MCP server registration for Claude Code and opencode |
+| `campaign.example.yaml` | Roster template (Zoom account → player → character, colocation) |
+
+## Setup
+
+Requires Python ≥ 3.10 and [uv](https://docs.astral.sh/uv/).
+
+```bash
+git clone <this repo> && cd dnd-dm-companion
+uv sync
+
+cp .env.example .env        # fill in wiki URL + bot credentials
+cp campaign.example.yaml campaign.yaml   # fill in your table's roster
+
+uv run dmc check            # verifies wiki connectivity + login
+```
+
+Create the bot password at `Special:BotPasswords` on your wiki with grants for
+editing, creating pages, and uploading files — **not** deletion. The companion
+is designed to never delete; the bot account shouldn't be able to even if
+prompted badly.
+
+### Semantic search (optional but recommended)
+
+CirrusSearch finds keywords; the `find_related_lore` tool finds *meaning*
+("what connects to the Cult of the Dragon?" surfaces pages that never say
+"Cult of the Dragon"). It needs an embeddings endpoint — any OpenAI-compatible
+one works, so the no-LLM-SDK rule holds. Cheapest path is local Ollama:
+
+```bash
+ollama pull nomic-embed-text
+# in .env:
+#   EMBEDDINGS_URL=http://localhost:11434/v1
+#   EMBEDDINGS_MODEL=nomic-embed-text
+
+uv run dmc index    # first run embeds every page; later runs only what changed
+```
+
+Re-run `dmc index` after ingesting a session (the ingest skill reminds you).
+The default index is a local gitignored SQLite file — safe to delete, cheap to
+rebuild. For larger corpora set `VECTOR_BACKEND=opensearch` (the OpenSearch
+instance already backing CirrusSearch works; see `.env.example`).
+
+### Official sourcebooks (optional)
+
+Add published material so the `canon-check` skill can compare your campaign's
+lore against canon, via either path:
+
+```bash
+# Direct: chunk + embed a book export into the lore index (no wiki involved)
+pdftotext -layout phb.pdf phb.txt           # convert outside the companion
+uv run dmc ingest-book phb.txt --title "Player's Handbook"
+uv run dmc remove-book "Player's Handbook"  # clean removal any time
+```
+
+Or host it on the wiki: put the material in a custom namespace (restrict it
+from players with MediaWiki's Lockdown extension), add the namespace id to
+`INDEX_NAMESPACES` in `.env`, and `dmc index` picks it up. Either way, scoped
+search keeps the corpora separate: `find_related_lore(scope="campaign")` is
+your table's lore, `scope="official"` is the books. Sourcebooks at full size
+are thousands of chunks — that's when `VECTOR_BACKEND=opensearch` earns its
+keep, though SQLite holds up fine for a book or two.
+
+## Choose your portal
+
+The companion has no UI of its own — any MCP-capable agent harness is the
+portal, and the harness is also what gives you **model-provider choice**
+(OpenRouter, Anthropic, a local LiteLLM server, Ollama, ...).
+
+**opencode + openchamber** (recommended for a shareable web portal):
+`opencode.json` in this repo registers the MCP server automatically; configure
+your provider in opencode's own config, run openchamber for the web UI, and
+start it from this directory.
+
+**Claude Code**: `.mcp.json` registers the server; `.claude/skills` already
+links to `skills/`. Just run `claude` from this directory.
+
+**Claude Desktop**: add to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "dnd-wiki": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/dnd-dm-companion", "dm-companion-mcp"]
+    }
+  }
+}
+```
+
+## A typical week
+
+```bash
+# After the session: drop the Zoom transcript in sessions/ (gitignored)
+uv run dmc transcript sessions/session-25.vtt -o sessions/session-25.md
+uv run dmc index   # refresh semantic search after the wiki gets updated
+
+# In your agent portal:
+#   "Ingest session 25 from sessions/session-25.md"
+#       → ingest-session skill: attributes speakers, writes the Session 25
+#         page, updates NPC/quest/location pages, reports what changed
+#
+# Before the next session:
+#   "Help me prep the next session"
+#       → session-prep skill: open threads, NPC reminders, three hooks
+#
+# Occasionally:
+#   "Audit the wiki"
+#       → lore-audit skill: contradictions, duplicates, orphan pages
+#   "How does our version of Leosin compare to the module?"
+#       → canon-check skill: campaign lore vs official sources, divergences cited
+```
+
+## Extending the companion
+
+New capabilities are **skills** (markdown workflows) plus, when needed, new
+**MCP tools** (Python). See [skills/README.md](skills/README.md) for the
+authoring guide and the rationale for markdown-over-code workflows.
+
+```bash
+uv run pytest          # run the test suite
+```
+
+## Safety rails
+
+- Every wiki write requires an edit summary → full audit trail in page history.
+- `DMC_READ_ONLY=1` blocks all writes at the client level (test new
+  models/skills against the real wiki without risk).
+- `mode="create"` write mode fails on existing pages — skills use it for new
+  entities so nothing gets silently overwritten.
+- MediaWiki page history is the undo button for everything else.

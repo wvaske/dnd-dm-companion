@@ -1,0 +1,21 @@
+# Secrets and personal campaign data
+.env
+campaign.yaml
+.claude/settings.local.json
+
+# Session working files (raw recordings/transcripts stay out of git)
+sessions/
+
+# Derived data (rebuild with: dmc index)
+lore_index.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+.pytest_cache/
+uv.lock
