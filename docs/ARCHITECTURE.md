@@ -111,6 +111,40 @@ players share accounts). So the pipeline splits exactly at that line:
 Raw recordings and transcripts stay out of git (`sessions/` is ignored);
 the wiki is where session knowledge persists.
 
+### Semantic search: local index, provider-agnostic embeddings
+
+CirrusSearch answers "which pages contain these words"; prep questions are
+often "which pages are *about* this" — so `find_related_lore` is a separate,
+embeddings-based tool rather than a CirrusSearch feature.
+
+Two choices worth recording:
+
+- **Embeddings over plain HTTP** (`embeddings.py`): any OpenAI-compatible
+  `/v1/embeddings` endpoint — Ollama locally, LiteLLM, OpenRouter, OpenAI.
+  This keeps the no-LLM-SDK rule intact and provider choice with the user,
+  same as chat models. Configured by `EMBEDDINGS_URL`/`EMBEDDINGS_MODEL`.
+- **Local SQLite index + in-process cosine** (`lore_index.py`), *not*
+  OpenSearch k-NN, even though the wiki's OpenSearch could do it. At
+  campaign-wiki scale (hundreds of pages) brute force is instantaneous, the
+  index is derived data anyone can rebuild with `dmc index`, and other DMs
+  adopting this project don't need an OpenSearch deployment with the k-NN
+  plugin. Revisit only if a wiki reaches tens of thousands of pages.
+
+Indexing (`dmc index`) is deterministic-side, incremental by content hash,
+one vector per page (title prepended, truncated at 6k chars). It's a CLI
+command, not an MCP tool: first runs take minutes (network + embedding), which
+fits a shell command better than a tool call inside a chat turn.
+
+### Image upload: same rails as page writes
+
+`upload_image` (tool) → `WikiClient.upload_image()` follows the write
+invariants: blocked by `DMC_READ_ONLY`, mandatory summary (the upload log
+comment), and an image-extension allowlist in code. MediaWiki duplicate/
+re-upload warnings are surfaced to the caller instead of auto-overridden —
+the tool's docstring tells the agent to report warnings to the DM rather than
+retry with `ignore_warnings=True` on its own. The bot password needs the
+upload grant (still not delete).
+
 ### Wiki as source of truth — consequences
 
 - The roster, templates, and conventions live **on the wiki**, not in this
@@ -139,13 +173,11 @@ the wiki is where session knowledge persists.
   roster page.
 - **Headless ingest** — cron/watch folder → `claude -p` / `opencode run`
   invoking ingest-session; needs a review step before writes (or
-  `DMC_READ_ONLY` + a diff-for-approval flow).
-- **Semantic/RAG search tool** — CirrusSearch is keyword-based; a
-  `find_related_lore` tool backed by embeddings over page content would help
-  prep ("what do we know that connects to the Cult of the Dragon?").
-  OpenSearch (already deployed) supports k-NN vectors.
-- **Image upload tool** — token art, maps (needs `upload` grant on a
-  separate bot password).
+  `DMC_READ_ONLY` + a diff-for-approval flow). Could also auto-run
+  `dmc index` after ingest.
 - **Whisper-based diarization** — if Zoom attribution quality disappoints,
   re-transcribe audio with speaker diarization and feed that to the same
   ingest skill.
+- **Per-section embeddings** — the lore index stores one vector per page;
+  if long pages (session logs) dilute retrieval quality, split on wikitext
+  `==` headings.

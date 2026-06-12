@@ -11,6 +11,8 @@ is deliberate.
 - `src/dm_companion/server.py` — MCP server (`dm-companion-mcp`); tools stay
   low-level, entity semantics belong in skills
 - `src/dm_companion/transcripts/` + `cli.py` — deterministic Zoom VTT pipeline (`dmc`)
+- `src/dm_companion/embeddings.py` + `lore_index.py` — semantic search;
+  embeddings via OpenAI-compatible HTTP only (no SDK), local SQLite index
 - `skills/` — workflows as SKILL.md (canonical; `.claude/skills` and
   `.opencode/skill` are symlinks to it)
 
@@ -21,6 +23,7 @@ uv sync --extra dev    # install
 uv run pytest          # tests
 uv run dmc check       # wiki connectivity (needs .env)
 uv run dmc transcript <file.vtt> -o out.md
+uv run dmc index       # refresh semantic lore index (needs EMBEDDINGS_* in .env)
 ```
 
 ## Rules

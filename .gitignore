@@ -6,6 +6,9 @@ campaign.yaml
 # Session working files (raw recordings/transcripts stay out of git)
 sessions/
 
+# Derived data (rebuild with: dmc index)
+lore_index.db
+
 # Python
 __pycache__/
 *.py[cod]

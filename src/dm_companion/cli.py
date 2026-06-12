@@ -39,7 +39,34 @@ def cmd_transcript(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_index(args: argparse.Namespace) -> int:
+    from dm_companion.embeddings import EmbeddingsClient, EmbeddingsError
+    from dm_companion.lore_index import LoreIndex, build_index
+    from dm_companion.wiki import WikiClient
+
+    wiki = WikiClient()
+    try:
+        embedder = EmbeddingsClient.from_settings(wiki.settings)
+    except EmbeddingsError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+    index = LoreIndex(args.db or wiki.settings.index_path)
+    try:
+        summary = build_index(wiki, embedder, index, full=args.full, progress=print)
+    finally:
+        index.close()
+    print(
+        f"Done: {summary['embedded']} embedded, {summary['unchanged']} unchanged, "
+        f"{len(summary['removed'])} removed (wiki has {summary['total_pages']} pages)"
+    )
+    for title in summary["removed"]:
+        print(f"  removed from index: {title}")
+    return 0
+
+
 def cmd_check(_args: argparse.Namespace) -> int:
+    from dm_companion.lore_index import LoreIndex
     from dm_companion.wiki import WikiClient
 
     client = WikiClient()
@@ -47,6 +74,17 @@ def cmd_check(_args: argparse.Namespace) -> int:
     print(f"Wiki:      {settings.wiki_url}")
     print(f"Bot user:  {settings.bot_username or '(anonymous)'}")
     print(f"Read-only: {settings.read_only}")
+    if settings.embeddings_url:
+        index = LoreIndex(settings.index_path)
+        stats = index.stats()
+        index.close()
+        print(
+            f"Semantic:  {settings.embeddings_url} ({settings.embeddings_model}), "
+            f"index has {stats['pages']} pages"
+            + (f", built {stats['indexed_at']}" if stats["indexed_at"] else " — run: dmc index")
+        )
+    else:
+        print("Semantic:  not configured (set EMBEDDINGS_URL / EMBEDDINGS_MODEL to enable)")
     try:
         results = client.search("a", limit=1)
     except Exception as exc:  # surface the real error, whatever mwclient raises
@@ -73,6 +111,17 @@ def main(argv: list[str] | None = None) -> int:
         help="Merge same-speaker cues separated by at most this many seconds (default: 30)",
     )
     p_transcript.set_defaults(func=cmd_transcript)
+
+    p_index = sub.add_parser(
+        "index", help="Build/refresh the semantic lore index (incremental)"
+    )
+    p_index.add_argument(
+        "--full",
+        action="store_true",
+        help="Re-embed every page (required after changing EMBEDDINGS_MODEL)",
+    )
+    p_index.add_argument("--db", help="Index file path (default: $DMC_INDEX_PATH or lore_index.db)")
+    p_index.set_defaults(func=cmd_index)
 
     p_check = sub.add_parser("check", help="Verify wiki connectivity and credentials")
     p_check.set_defaults(func=cmd_check)

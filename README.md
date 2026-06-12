@@ -29,10 +29,11 @@ their rationale.
 
 | Path | What it is |
 |---|---|
-| `src/dm_companion/wiki/` | MediaWiki client: search (CirrusSearch), read, write with mandatory edit summaries, read-only mode |
+| `src/dm_companion/wiki/` | MediaWiki client: search (CirrusSearch), read, write with mandatory edit summaries, image upload, read-only mode |
 | `src/dm_companion/server.py` | MCP server exposing the wiki to any MCP host |
 | `src/dm_companion/transcripts/` | Zoom WebVTT parser: cue merging, speaker stats, markdown output |
-| `src/dm_companion/cli.py` | `dmc` CLI: `dmc transcript`, `dmc check` |
+| `src/dm_companion/embeddings.py` + `lore_index.py` | Semantic search: local SQLite vector index over page content, embeddings via any OpenAI-compatible endpoint |
+| `src/dm_companion/cli.py` | `dmc` CLI: `dmc transcript`, `dmc index`, `dmc check` |
 | `skills/` | Agent workflows as SKILL.md: `ingest-session`, `session-prep`, `lore-audit` |
 | `.mcp.json`, `opencode.json` | MCP server registration for Claude Code and opencode |
 | `campaign.example.yaml` | Roster template (Zoom account → player → character, colocation) |
@@ -52,8 +53,28 @@ uv run dmc check            # verifies wiki connectivity + login
 ```
 
 Create the bot password at `Special:BotPasswords` on your wiki with grants for
-editing and creating pages — **not** deletion. The companion is designed to
-never delete; the bot account shouldn't be able to even if prompted badly.
+editing, creating pages, and uploading files — **not** deletion. The companion
+is designed to never delete; the bot account shouldn't be able to even if
+prompted badly.
+
+### Semantic search (optional but recommended)
+
+CirrusSearch finds keywords; the `find_related_lore` tool finds *meaning*
+("what connects to the Cult of the Dragon?" surfaces pages that never say
+"Cult of the Dragon"). It needs an embeddings endpoint — any OpenAI-compatible
+one works, so the no-LLM-SDK rule holds. Cheapest path is local Ollama:
+
+```bash
+ollama pull nomic-embed-text
+# in .env:
+#   EMBEDDINGS_URL=http://localhost:11434/v1
+#   EMBEDDINGS_MODEL=nomic-embed-text
+
+uv run dmc index    # first run embeds every page; later runs only what changed
+```
+
+Re-run `dmc index` after ingesting a session (the ingest skill reminds you).
+The index is a local gitignored SQLite file — safe to delete, cheap to rebuild.
 
 ## Choose your portal
 
@@ -87,6 +108,7 @@ links to `skills/`. Just run `claude` from this directory.
 ```bash
 # After the session: drop the Zoom transcript in sessions/ (gitignored)
 uv run dmc transcript sessions/session-25.vtt -o sessions/session-25.md
+uv run dmc index   # refresh semantic search after the wiki gets updated
 
 # In your agent portal:
 #   "Ingest session 25 from sessions/session-25.md"

@@ -64,6 +64,11 @@ name ("the innkeeper" might be page `Elmar Barthen`).
      category conventions (read a similar page first to copy its shape).
 3. Every edit summary references the session: `"Session <N> ingest: <what changed>"`.
 4. Link aggressively: `[[Page Name]]` for every entity mention in the session log.
+5. If the DM provided images (maps, handouts, token art), upload them with
+   `upload_image` — summary like `"Session <N> ingest: <what it is>"`, a
+   description with a category (e.g. `[[Category:Maps]]`), then embed via
+   `[[File:<name>|thumb|<caption>]]` on the relevant page. If the upload
+   returns a Warning (usually a duplicate), report it instead of forcing.
 
 ### Session page structure
 
@@ -98,5 +103,7 @@ pages are formatted and match them.)
 ## Report
 
 Finish with a summary for the DM: pages created, pages edited (with edit
-summaries), attribution uncertainties flagged in Phase 2, and anything that
-needs a human decision. Never delete or blank a page in this workflow.
+summaries), images uploaded, attribution uncertainties flagged in Phase 2,
+and anything that needs a human decision. Remind the DM to run `dmc index`
+so semantic search picks up the new lore. Never delete or blank a page in
+this workflow.

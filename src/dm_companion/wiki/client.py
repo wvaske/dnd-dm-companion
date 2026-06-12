@@ -12,6 +12,7 @@ from __future__ import annotations
 import re
 import time
 from itertools import islice
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
@@ -22,6 +23,9 @@ from dm_companion.config import Settings, load_settings
 _TAG_RE = re.compile(r"<[^>]+>")
 
 WRITE_MODES = ("replace", "append", "prepend", "create")
+
+# What the upload tool accepts; the wiki's $wgFileExtensions still has final say.
+IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg")
 
 
 class WikiError(RuntimeError):
@@ -92,7 +96,8 @@ class WikiClient:
         name = category.removeprefix("Category:")
         return [p.name for p in islice(self.site.categories[name], limit)]
 
-    def list_pages(self, prefix: str = "", limit: int = 100) -> list[str]:
+    def list_pages(self, prefix: str = "", limit: int | None = 100) -> list[str]:
+        """List page titles; limit=None returns every page (used by the indexer)."""
         pages = self.site.allpages(prefix=prefix) if prefix else self.site.allpages()
         return [p.name for p in islice(pages, limit)]
 
@@ -168,3 +173,58 @@ class WikiClient:
             "revision_id": result.get("newrevid"),
             "summary": summary,
         }
+
+    def upload_image(
+        self,
+        path: str,
+        summary: str,
+        filename: str | None = None,
+        description: str = "",
+        ignore_warnings: bool = False,
+    ) -> dict:
+        """Upload a local image file to the wiki.
+
+        `summary` is the upload log comment (mandatory, like edit summaries).
+        `description` becomes the File: page wikitext (caption, categories).
+        MediaWiki warns instead of uploading on duplicates/re-uploads; the
+        warning is returned so the caller can decide, and can retry with
+        ignore_warnings=True. Requires the bot password to have the upload grant.
+        """
+        if self.settings.read_only:
+            raise WikiError("Wiki client is in read-only mode (DMC_READ_ONLY is set).")
+        if not summary.strip():
+            raise WikiError("An upload summary is required.")
+        file_path = Path(path)
+        if not file_path.is_file():
+            raise WikiError(f"File not found: {path}")
+        if file_path.suffix.lower() not in IMAGE_EXTENSIONS:
+            raise WikiError(
+                f"Unsupported file type {file_path.suffix!r}; "
+                f"expected one of {IMAGE_EXTENSIONS}."
+            )
+
+        target_name = filename or file_path.name
+        with file_path.open("rb") as handle:
+            result = self.site.upload(
+                file=handle,
+                filename=target_name,
+                description=description,
+                comment=summary,
+                ignore=ignore_warnings,
+            )
+
+        status = result.get("result")
+        info = {
+            "filename": result.get("filename", target_name),
+            "result": status,
+            "file_page": f"File:{result.get('filename', target_name)}",
+        }
+        if status == "Warning":
+            info["warnings"] = result.get("warnings", {})
+            info["hint"] = (
+                "Upload was held back by MediaWiki warnings (e.g. duplicate file). "
+                "Retry with ignore_warnings=True only if overwriting is intended."
+            )
+        elif status == "Success":
+            info["url"] = result.get("imageinfo", {}).get("url")
+        return info

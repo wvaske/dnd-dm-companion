@@ -14,7 +14,9 @@ deliberate (unreliable narrators, secrets the players haven't uncovered).
 1. **Inventory**: `list_pages()` and the major categories (`Sessions`, `NPCs`,
    `Locations`, `Quests`, `Items`, `Factions`). Note pages in no category.
 2. **Duplicates**: look for near-identical titles (e.g. "Leosin" vs "Leosin
-   Erlanthar") and search snippets describing the same entity.
+   Erlanthar") and search snippets describing the same entity. If semantic
+   search is configured, `find_related_lore` with an entity's description is
+   the best duplicate detector — two top hits describing one being is a flag.
 3. **Contradictions**: for major NPCs and quests, compare the entity page
    against mentions in session logs (`search_wiki("<name>")`). Status drift is
    the common failure: an NPC killed in Session 12 still "Active" on their page.

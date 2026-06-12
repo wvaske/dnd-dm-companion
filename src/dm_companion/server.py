@@ -69,6 +69,63 @@ def write_page(
 
 
 @mcp.tool()
+def find_related_lore(query: str, limit: int = 8) -> dict:
+    """Semantic search over campaign lore — finds pages related in *meaning*.
+
+    Complements search_wiki (keyword/CirrusSearch): use this for conceptual
+    questions like "what do we know that connects to the Cult of the Dragon?"
+    where the relevant pages may not contain the query's words. Results come
+    from a local embeddings index built with `dmc index`; if results seem
+    stale or empty, ask the DM to re-run it.
+    """
+    from dm_companion.embeddings import EmbeddingsClient
+    from dm_companion.lore_index import LoreIndex
+
+    settings = _wiki().settings
+    index = LoreIndex(settings.index_path)
+    try:
+        stats = index.stats()
+        if stats["pages"] == 0:
+            return {
+                "matches": [],
+                "error": "The lore index is empty. Build it with: dmc index",
+            }
+        embedder = EmbeddingsClient.from_settings(settings)
+        query_vector = embedder.embed([query])[0]
+        return {"matches": index.search(query_vector, limit=limit), "index": stats}
+    finally:
+        index.close()
+
+
+@mcp.tool()
+def upload_image(
+    path: str,
+    summary: str,
+    filename: str = "",
+    description: str = "",
+    ignore_warnings: bool = False,
+) -> dict:
+    """Upload a local image (token art, map, handout) to the wiki.
+
+    `summary` is the upload log comment (mandatory). `description` becomes the
+    File: page wikitext — include a caption and a category, e.g.
+    "Map of Parnast [[Category:Maps]]". Reference the result in pages with
+    [[File:<filename>|thumb|<caption>]].
+
+    A "Warning" result means MediaWiki held the upload back (usually a
+    duplicate); report the warning to the DM rather than retrying with
+    ignore_warnings=True on your own.
+    """
+    return _wiki().upload_image(
+        path,
+        summary=summary,
+        filename=filename or None,
+        description=description,
+        ignore_warnings=ignore_warnings,
+    )
+
+
+@mcp.tool()
 def list_category(category: str, limit: int = 100) -> list[str]:
     """List page titles in a category (e.g. "NPCs", "Locations", "Sessions")."""
     return _wiki().list_category(category, limit=limit)

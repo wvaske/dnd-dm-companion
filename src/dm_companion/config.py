@@ -26,6 +26,12 @@ class Settings:
     bot_username: str
     bot_password: str
     read_only: bool
+    # Semantic search (optional). Any OpenAI-compatible embeddings endpoint:
+    # Ollama, LiteLLM, OpenRouter, OpenAI, ... NOT an LLM SDK — plain HTTP.
+    embeddings_url: str = ""
+    embeddings_model: str = ""
+    embeddings_api_key: str = ""
+    index_path: str = "lore_index.db"
 
 
 def load_settings() -> Settings:
@@ -44,4 +50,8 @@ def load_settings() -> Settings:
         bot_username=username,
         bot_password=password,
         read_only=read_only,
+        embeddings_url=os.environ.get("EMBEDDINGS_URL", "").strip().rstrip("/"),
+        embeddings_model=os.environ.get("EMBEDDINGS_MODEL", "").strip(),
+        embeddings_api_key=os.environ.get("EMBEDDINGS_API_KEY", "").strip(),
+        index_path=os.environ.get("DMC_INDEX_PATH", "lore_index.db").strip(),
     )
