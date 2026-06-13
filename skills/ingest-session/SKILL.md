@@ -45,6 +45,9 @@ From the attributed transcript, collect:
 - **Recap**: 2–4 paragraph narrative summary of what happened, in-world.
 - **Entities**: every NPC, location, faction, item, and quest mentioned.
   For each: new or existing? what changed this session?
+- **Creatures**: every *kind* of monster the party encountered or fought (the
+  type, not the named individual — a named wyrm is an NPC). Note what the party
+  learned about each: what hurt it, what it shrugged off, what it could do.
 - **Quest movement**: threads opened, advanced, or closed.
 - **Loot & rewards**, **memorable quotes** (attributed), **DM rulings** worth
   remembering.
@@ -59,14 +62,26 @@ name ("the innkeeper" might be page `Elmar Barthen`).
 
 1. Create `Session <N>` with `write_page(mode="create")` using the structure
    below. If it already exists, stop and ask the DM instead of overwriting.
-2. For each entity:
+2. Link the new session on the **`Session Logs`** index page
+   (`read_page`, then `mode="replace"`). Add a bold, linked bullet under the
+   current story-arc heading, matching the one-sentence style and dash format
+   of the existing entries:
+   `* '''[[Session <N> - <Title>]]''' – <one-line summary>`. A freshly created
+   session page is invisible to readers until it is listed here, so this step
+   is not optional. While you're there, add any earlier sessions that are
+   missing from the index.
+3. For each entity:
    - existing page → `read_page`, then update with `mode="replace"` (preserve
      everything you aren't changing) or add a dated note with `mode="append"`.
    - genuinely new → `mode="create"`, following the wiki's template and
      category conventions (read a similar page first to copy its shape).
-3. Every edit summary references the session: `"Session <N> ingest: <what changed>"`.
-4. Link aggressively: `[[Page Name]]` for every entity mention in the session log.
-5. If the DM provided images (maps, handouts, token art), upload them with
+4. For each new **kind** of creature the party met or fought, add or update its
+   Bestiary dossier and the `Bestiary` index — follow the **update-bestiary**
+   skill (`{{Monster Lore}}` dossier, hierarchy wiring, open-licensed image,
+   index entry). Named individual monsters are NPC pages, not bestiary types.
+5. Every edit summary references the session: `"Session <N> ingest: <what changed>"`.
+6. Link aggressively: `[[Page Name]]` for every entity mention in the session log.
+7. If the DM provided images (maps, handouts, token art), upload them with
    `upload_image` — summary like `"Session <N> ingest: <what it is>"`, a
    description with a category (e.g. `[[Category:Maps]]`), then embed via
    `[[File:<name>|thumb|<caption>]]` on the relevant page. If the upload
@@ -105,7 +120,8 @@ pages are formatted and match them.)
 ## Report
 
 Finish with a summary for the DM: pages created, pages edited (with edit
-summaries), images uploaded, attribution uncertainties flagged in Phase 2,
-and anything that needs a human decision. Remind the DM to run
+summaries), the `Session Logs` index entry added, any Bestiary dossiers and
+index entries added, images uploaded, attribution uncertainties flagged in
+Phase 2, and anything that needs a human decision. Remind the DM to run
 `uv run dmc index` so semantic search picks up the new lore. Never delete or
 blank a page in this workflow.

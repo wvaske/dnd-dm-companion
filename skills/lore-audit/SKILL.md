@@ -22,6 +22,11 @@ deliberate (unreliable narrators, secrets the players haven't uncovered).
    the common failure: an NPC killed in Session 12 still "Active" on their page.
 4. **Convention drift**: pages not using the standard templates, missing
    `[[links]]` for entity mentions, stale stub pages.
+5. **Bestiary sync**: cross-check `Category:Monsters` against the `Bestiary`
+   index — every dossier should be listed there, and every index link should
+   resolve. Flag creature *kinds* named in session logs that have no dossier,
+   subtype pages not linked from their parent/hub, and dossiers missing their
+   kinship category. (See the **update-bestiary** skill for the conventions.)
 
 ## Report
 
@@ -31,6 +36,8 @@ Group findings by severity:
   with page titles.
 - **Duplicates** — proposed merge direction and what content would move.
 - **Hygiene** — uncategorized/orphan/stub pages, listed compactly.
+- **Bestiary gaps** — creature kinds without a dossier, dossiers missing from
+  the `Bestiary` index, and broken hierarchy (subtype/hub) links.
 
 For each finding propose a concrete fix. After DM approval, apply fixes with
 edit summaries like `"Lore audit: <fix>"`, using `mode="replace"` only on
