@@ -58,10 +58,32 @@ class WikiClient:
             if not path.endswith("/"):
                 path += "/"
             site = mwclient.Site(parsed.netloc, scheme=parsed.scheme or "https", path=path)
-            if self.settings.bot_username:
-                site.login(self.settings.bot_username, self.settings.bot_password)
+            self._login(site)
             self._site = site
         return self._site
+
+    def _login(self, site: mwclient.Site) -> None:
+        """Authenticate the bot, if credentials are configured."""
+        if self.settings.bot_username:
+            site.login(self.settings.bot_username, self.settings.bot_password)
+
+    def _write_with_relogin(self, action):
+        """Run a write `action`, recovering once from an expired bot session.
+
+        MediaWiki bot sessions time out, after which mwclient raises
+        ``AssertUserFailedError`` (the ``assert=user`` guard) on the next write.
+        Long-running processes — the MCP server, batch ingests — would otherwise
+        fail every write until restarted. On that specific failure we re-login
+        the existing session and retry the action exactly once; any other error,
+        or a genuine login failure on retry, propagates unchanged.
+        """
+        try:
+            return action()
+        except mwclient.errors.AssertUserFailedError:
+            if not self.settings.bot_username:
+                raise  # no credentials to recover with; surface honestly
+            self._login(self.site)
+            return action()
 
     # ------------------------------------------------------------------ reads
 
@@ -170,7 +192,9 @@ class WikiClient:
         elif mode == "prepend" and existed:
             text = text.rstrip("\n") + "\n\n" + page.text()
 
-        result = page.save(text, summary=summary, minor=minor, bot=True)
+        result = self._write_with_relogin(
+            lambda: page.save(text, summary=summary, minor=minor, bot=True)
+        )
         return {
             "title": page.name,
             "created": not existed,
@@ -209,13 +233,18 @@ class WikiClient:
 
         target_name = filename or file_path.name
         with file_path.open("rb") as handle:
-            result = self.site.upload(
-                file=handle,
-                filename=target_name,
-                description=description,
-                comment=summary,
-                ignore=ignore_warnings,
-            )
+
+            def _do_upload():
+                handle.seek(0)  # rewind in case a re-login retry re-reads the file
+                return self.site.upload(
+                    file=handle,
+                    filename=target_name,
+                    description=description,
+                    comment=summary,
+                    ignore=ignore_warnings,
+                )
+
+            result = self._write_with_relogin(_do_upload)
 
         status = result.get("result")
         info = {
