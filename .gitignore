@@ -5,6 +5,7 @@ campaign.yaml
 
 # Session working files (raw recordings/transcripts stay out of git)
 sessions/
+data/
 
 # Derived data (rebuild with: dmc index)
 lore_index.db
