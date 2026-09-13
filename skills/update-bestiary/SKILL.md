@@ -62,6 +62,12 @@ Write descriptively and in-world. As the party learns more across encounters,
 raise `confidence` and move facts up the entry. `Agent Wren, of the Tellstone
 circle` is the bestiary's standing compiler — keep the voice consistent.
 
+If the creature was harvested, add `== Harvest Profile ==` and
+`== Harvest Record ==` sections using the **harvest-database** skill's Cargo
+templates (`{{Harvest Component}}` / `{{Harvest Log Entry}}` rows) — never raw
+wikitables — so the components land in the harvest database and the
+[[Harvested Materials]] ledger updates itself.
+
 ## Phase 3 — Wire it into the hierarchy
 
 When a creature has subtypes or kin, connect them:
