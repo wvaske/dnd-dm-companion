@@ -34,9 +34,14 @@ Helper templates: `{{Harvest Profile Header}}`, `{{Harvest Record Header}}`,
   stock consumed by crafting, **negative** qty). The ledger sums
   `Recovered + Spent` rows and hides components at ≤ 0.
 - **Never `#cargo_query` the `DMHarvest` table from a player-visible page.**
-  Cargo data is not protected by the DM-namespace read lock once stored; the
-  only thing keeping DM manifests private is that queries against that table
-  live exclusively on `DM:` pages.
+  Cargo data is not protected by the DM-namespace read lock once stored. A
+  LocalSettings guard (`$wgCargoDMOnlyTables`, added 2026-09-13) denies
+  non-dm/sysop users the other read doors — `Special:Drilldown/DMHarvest`,
+  `Special:CargoTables/DMHarvest`, and `action=cargoquery` — and redirects
+  bare `Special:Drilldown` to `HarvestComponents`; Common.css hides the
+  Drilldown tab. But a `#cargo_query` embedded in a page renders for every
+  viewer, so this invariant still holds: DMHarvest queries live only on
+  `DM:` pages.
 - Rarity vocabulary: `Scraps, Common, Uncommon, Rare, Very Rare, Legendary,
   Artifact` (CV 1/2/4/8/16/32/64 and DC 0/5/10/15/20/25/30 derive from it).
   Item-type vocabulary for `primary_for`/`contributor_to`:
