@@ -15,6 +15,7 @@ query and regenerates itself).
 |---|---|---|---|
 | `HarvestComponents` | `{{Harvest Component}}` | creature pages, "Harvest Profile" section | one row per component that exists on a known carcass |
 | `HarvestLog` | `{{Harvest Log Entry}}` | creature pages, "Harvest Record" section | one row per harvest event (rolls, units, outcome) |
+| `Patterns` | `{{Crafting Pattern}}` | `Crafting Patterns` page | the party's pattern book — known designs, the effect tags each accepts as a primary, status Known/Discoverable/Locked |
 | `DMHarvest` | `{{DM Harvest Component}}` | `DM:Harvest Manifests` only | unrevealed manifests; the template refuses to store outside the `DM:` namespace |
 
 Helper templates: `{{Harvest Profile Header}}`, `{{Harvest Record Header}}`,
@@ -115,6 +116,21 @@ wrapped in `class="plainlinks"`). Note the search template joins its
 `AND`/`OR` connectives between *parenthesized* HOLDS clauses with no
 surrounding spaces — parser-function args are whitespace-trimmed, so spaced
 connectives silently corrupt the SQL.
+
+## Operation: maintain the pattern book
+
+`Crafting Patterns` holds the standard designs anyone proficient with a tool
+knows (19 as of 2026-09-13, grouped by facility/tool with the party's
+current crafters named). Each `{{Crafting Pattern}}` row lists the effect
+tags an acceptable primary must carry — rendered as deep links into Find
+Components, so a pattern shows what in the bank can feed it. Reveal a
+researched/found formula by adding a row (or flipping `status=` from
+Discoverable). Deliberately NOT in the book: wands/staves above Uncommon,
+anything Legendary, and Disguise/Illusion/Invisibility/Charm work — those
+stay discoverable rewards. The page's "Tuning the numbers" section fixes the
+rarity↔spell-level benchmarks (Uncommon ≈ 1st–2nd-level effect, Rare ≈
+3rd–4th, Very Rare ≈ 5th–6th; single-target runs a notch hotter than area);
+keep new item rulings consistent with it.
 
 ## Operation: answer questions
 
