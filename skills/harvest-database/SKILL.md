@@ -106,7 +106,12 @@ multiselect over the effect vocabulary (any/all matching, rarity, item type,
 banked-only), rendered by `Template:Component Search` from
 `Form:Component Search`. Point players there for "what do we have that does
 X". In queries, list-field filtering uses `HOLDS`:
-`where=effects HOLDS 'Damage: Fire'`. Note the search template joins its
+`where=effects HOLDS 'Damage: Fire'`. Effect tags shown in the ledger and in
+Harvest Profiles are deep links: RunQuery submits via GET, so a prefilled,
+already-run search is just a URL of the form
+`Find Components?pfRunQueryFormName=Component+Search&wpRunQuery=true&Component_Search%5Beffects%5D=<url-encoded tag>`
+(built in the row templates with `#arraymap` + `{{fullurl:}}` + `{{urlencode:|QUERY}}`,
+wrapped in `class="plainlinks"`). Note the search template joins its
 `AND`/`OR` connectives between *parenthesized* HOLDS clauses with no
 surrounding spaces — parser-function args are whitespace-trimmed, so spaced
 connectives silently corrupt the SQL.
