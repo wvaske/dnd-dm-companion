@@ -41,6 +41,15 @@ Helper templates: `{{Harvest Profile Header}}`, `{{Harvest Record Header}}`,
   Artifact` (CV 1/2/4/8/16/32/64 and DC 0/5/10/15/20/25/30 derive from it).
   Item-type vocabulary for `primary_for`/`contributor_to`:
   `Potion, Poison, Bomb, Wand, Staff, Wondrous, Armor, Weapon, Rations`.
+- **Effect tags come only from the standard vocabulary** in
+  `Template:Harvest Effect Values` — 105 `Category: Subtype` tags across
+  Damage / Resistance / Ward / Afflict / Boost / Skill / Sense / Move /
+  Restore / Utility. Every effect-bearing component gets 1–4 tags in its
+  `effects=` param (structure-only parts get none); the free-prose `effect=`
+  stays untouched as the creative canvas. Tags power the `Find Components`
+  search page and `Special:Drilldown`. Adding a value = edit that one
+  template + recreate the HarvestComponents/DMHarvest tables; renaming a
+  value also means editing every row that uses it.
 
 ## Operation: a new creature is harvested
 
@@ -54,7 +63,7 @@ Helper templates: `{{Harvest Profile Header}}`, `{{Harvest Record Header}}`,
    == Harvest Profile ==
    ''CR N — <Ceiling> ceiling. Rules: [[Monster Harvesting]].''
    {{Harvest Profile Header}}
-   {{Harvest Component|component=...|signature=yes|tool=...|rarity=...|effect=...|primary_for=...|contributor_to=...}}
+   {{Harvest Component|component=...|signature=yes|tool=...|rarity=...|effect=...|effects=Damage: Poison, Afflict: Poisoned|primary_for=...|contributor_to=...}}
    ...
    {{Harvest Table End}}
 
@@ -85,6 +94,18 @@ Add `{{DM Harvest Component}}` rows under a creature heading on
 `DM:Harvest Manifests` (`status=Unrevealed`/`Pending`). On reveal, move rows
 to the creature page as `{{Harvest Component}}` calls and delete them there.
 
+## Operation: search by effect (players & DM)
+
+The wiki page **`Find Components`** embeds a PageForms `Special:RunQuery`
+multiselect over the effect vocabulary (any/all matching, rarity, item type,
+banked-only), rendered by `Template:Component Search` from
+`Form:Component Search`. Point players there for "what do we have that does
+X". In queries, list-field filtering uses `HOLDS`:
+`where=effects HOLDS 'Damage: Fire'`. Note the search template joins its
+`AND`/`OR` connectives between *parenthesized* HOLDS clauses with no
+surrounding spaces — parser-function args are whitespace-trimmed, so spaced
+connectives silently corrupt the SQL.
+
 ## Operation: answer questions
 
 Prefer a `#cargo_query` (on a page, in a sandbox preview, or via the DB
@@ -113,4 +134,8 @@ browsing.
   `docker exec mw_app php maintenance/run.php ./extensions/Cargo/maintenance/cargoRecreateData.php --table <Table>`.
 - `{{Harvested Materials Row}}`'s leading/trailing newlines are load-bearing:
   Cargo `format=template` concatenates row outputs without line breaks.
+- Prose fields (`effect`, `notes`) are declared as Cargo type `Wikitext`, not
+  `Text` — `Text` HTML-escapes on query output and double-escapes `&`.
+  Aggregates in table-format queries need `FLOOR(SUM(...))` or they render
+  as `1.0`.
 - After content changes, refresh the semantic index: `uv run dmc index`.
