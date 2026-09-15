@@ -22,7 +22,16 @@ deliberate (unreliable narrators, secrets the players haven't uncovered).
    the common failure: an NPC killed in Session 12 still "Active" on their page.
 4. **Convention drift**: pages not using the standard templates, missing
    `[[links]]` for entity mentions, stale stub pages.
-5. **Bestiary sync**: cross-check `Category:Monsters` against the `Bestiary`
+5. **Current-truth violations**: scan public-namespace pages for inline
+   change commentary — date-stamped meta notes ("(updated Sept 2026)",
+   "retro pass", "replacing an earlier…"), rule-provenance parentheticals
+   ("(Rule added in Session N)"), workflow flags ("pending DM
+   confirmation"), and bare inline `(Session N)` citations that should be
+   `<ref>` footnotes. Pages state current truth only; change narration
+   belongs in edit summaries and Talk pages, and session-log sourcing in
+   numbered references (see any wiki-writing skill's current-truth policy).
+   In-world history ("formerly the Gray Watch") is lore, not a violation.
+6. **Bestiary sync**: cross-check `Category:Monsters` against the `Bestiary`
    index — every dossier should be listed there, and every index link should
    resolve. Flag creature *kinds* named in session logs that have no dossier,
    subtype pages not linked from their parent/hub, and dossiers missing their

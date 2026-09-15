@@ -251,3 +251,20 @@ summaries), the texture beats routed and where, the quest-tracker changes
 images uploaded, attribution/presence notes, and anything needing a human
 decision. Remind the DM to run `uv run dmc index` so semantic search picks up
 the new lore. Never delete or blank a page in this workflow.
+
+## Current-truth policy (wiki issue #2)
+
+Public-namespace pages state **current truth only**. Rules for every wiki write:
+
+- **No inline change commentary.** What was reworked, when, and what it
+  replaced goes in the **edit summary** AND a dated note on the page's
+  **Talk (Discussion) page** — never in the article body. No "(Rule added in
+  Session N)", no "(updated <date>)", no retro-pass narrations, no
+  "pending confirmation" workflow flags.
+- **Session logs are external sources.** Cite them Wikipedia-style with
+  numbered footnotes: `<ref>[[Session N - Title|Session N]]</ref>` at the
+  claim, and a `== References ==` / `<references />` section at the bottom
+  (Extension:Cite is loaded). Only the number shows in the text. In-world
+  history ("formerly the Gray Watch") is lore, not commentary — it stays.
+- **DM pages may keep change logs.** Rule evolution lives on
+  `DM:Rules Change Log`, not on player-facing pages.
