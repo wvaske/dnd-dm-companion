@@ -24,6 +24,9 @@ _TAG_RE = re.compile(r"<[^>]+>")
 
 WRITE_MODES = ("replace", "append", "prepend", "create")
 
+# Re-probe the session at most this often; the probe is one cheap GET.
+_SESSION_RECHECK_SECONDS = 300.0
+
 # What the upload tool accepts; the wiki's $wgFileExtensions still has final say.
 IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg")
 
@@ -49,6 +52,7 @@ class WikiClient:
     def __init__(self, settings: Settings | None = None):
         self.settings = settings or load_settings()
         self._site: mwclient.Site | None = None
+        self._session_checked_at: float | None = None
 
     @property
     def site(self) -> mwclient.Site:
@@ -60,12 +64,44 @@ class WikiClient:
             site = mwclient.Site(parsed.netloc, scheme=parsed.scheme or "https", path=path)
             self._login(site)
             self._site = site
+            self._session_checked_at = time.monotonic()
+        elif (
+            self.settings.bot_username
+            and time.monotonic() - (self._session_checked_at or 0.0) >= _SESSION_RECHECK_SECONDS
+        ):
+            self._session_checked_at = time.monotonic()
+            self._relogin_if_stale()
         return self._site
 
     def _login(self, site: mwclient.Site) -> None:
         """Authenticate the bot, if credentials are configured."""
         if self.settings.bot_username:
             site.login(self.settings.bot_username, self.settings.bot_password)
+
+    def _session_degraded(self) -> bool:
+        """True if a configured bot session has gone anonymous server-side.
+
+        mwclient sends the ``assert=user`` guard only with writes, so a session
+        that expired (idle timeout, wiki restart) turns every read into a
+        silent anonymous request. Public pages still read fine, but restricted
+        namespaces (``DM:``) fail with ``accessdenied`` — and restricted
+        listings quietly return filtered data. One ``userinfo`` probe detects
+        the degradation; without bot credentials there is nothing to detect.
+        """
+        if self._site is None or not self.settings.bot_username:
+            return False
+        try:
+            info = self._site.api("query", http_method="GET", meta="userinfo")
+        except mwclient.errors.APIError:
+            return False  # cannot tell; let the original error surface
+        return info.get("query", {}).get("userinfo", {}).get("id", 0) == 0
+
+    def _relogin_if_stale(self) -> bool:
+        """Re-login if the session went stale; returns True if it did."""
+        if not self._session_degraded():
+            return False
+        self._login(self._site)
+        return True
 
     def _write_with_relogin(self, action):
         """Run a write `action`, recovering once from an expired bot session.
@@ -105,10 +141,21 @@ class WikiClient:
         page = self.site.pages[title]
         if not page.exists:
             return {"title": title, "exists": False, "text": None, "categories": []}
+        try:
+            text = page.text()
+        except mwclient.errors.APIError:
+            # APIError is what a genuinely unreadable page raises — and also
+            # what a stale session looks like: mwclient asserts the user only
+            # on writes, so a session expired server-side reads as anonymous,
+            # which restricted namespaces (DM:) deny. Probe auth and retry
+            # once if we went stale; a real permission denial propagates.
+            if not self._relogin_if_stale():
+                raise
+            text = page.text()
         return {
             "title": page.name,
             "exists": True,
-            "text": page.text(),
+            "text": text,
             "categories": [c.name for c in page.categories()],
             "last_modified": _fmt_time(page.touched),
             "last_revision_id": page.revision,
