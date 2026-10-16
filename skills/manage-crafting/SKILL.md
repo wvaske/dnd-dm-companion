@@ -57,7 +57,9 @@ exists (`search_wiki` / `read_page` first).
    </noinclude>
    ```
 
-2. **DM-private reference → `DM:` namespace** (id **3000**, read-restricted).
+2. **DM-private reference → `DM:` namespace** (id **3000**, read-restricted;
+   its talk namespace `DM talk:` (id **3001**) is gated the same way — both
+   verified 2026-10-16).
    **Before publishing any Part 1 content, confirm the `DM:` namespace is
    actually player-hidden** — query the wiki's namespaces (`siteinfo`) and verify
    id 3000 exists and is read-restricted (an anonymous fetch of a `DM:` page must

@@ -138,7 +138,31 @@ def cmd_check(_args: argparse.Namespace) -> int:
     print(f"Wiki:      {settings.wiki_url}")
     print(f"Bot user:  {settings.bot_username or '(anonymous)'}")
     print(f"Read-only: {settings.read_only}")
+
+    ok = True
+
+    # Namespace gating: DM material must be invisible to anonymous readers.
+    from dm_companion.wiki.gating import check_namespace_gating
+
+    problems = check_namespace_gating(settings.wiki_url)
+    if problems:
+        ok = False
+        print("Gating:    FAILED")
+        for problem in problems:
+            print(f"           {problem}")
+    else:
+        print("Gating:    OK — DM: (3000) and DM talk: (3001) deny anonymous reads")
+
+    # Semantic stack: the embeddings endpoint must answer, not just be configured.
     if settings.embeddings_url:
+        from dm_companion.embeddings import EmbeddingsClient, EmbeddingsError
+
+        try:
+            EmbeddingsClient.from_settings(settings).embed(["dmc check ping"])
+            embeddings_status = "endpoint OK"
+        except EmbeddingsError as exc:
+            ok = False
+            embeddings_status = f"FAILED — {exc}"
         store = open_vector_store(settings)
         try:
             stats = store.stats()
@@ -146,20 +170,24 @@ def cmd_check(_args: argparse.Namespace) -> int:
             store.close()
         print(
             f"Semantic:  {settings.embeddings_url} ({settings.embeddings_model}) "
-            f"-> {stats['backend']} backend, {stats['documents']} documents"
+            f"[{embeddings_status}]"
+        )
+        print(
+            f"           {stats['backend']} backend, {stats['documents']} documents"
             + (f", built {stats['indexed_at']}" if stats["indexed_at"] else " — run: dmc index")
         )
         for source, count in sorted(stats["sources"].items()):
             print(f"             {source}: {count}")
     else:
         print("Semantic:  not configured (set EMBEDDINGS_URL / EMBEDDINGS_MODEL to enable)")
+
     try:
         results = client.search("a", limit=1)
     except Exception as exc:  # surface the real error, whatever mwclient raises
         print(f"FAILED: {exc}", file=sys.stderr)
         return 1
     print(f"OK: connected and search works ({len(results)} result returned)")
-    return 0
+    return 0 if ok else 1
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -213,7 +241,10 @@ def main(argv: list[str] | None = None) -> int:
     p_rm_book.add_argument("title", help="The title used at ingest time")
     p_rm_book.set_defaults(func=cmd_remove_book)
 
-    p_check = sub.add_parser("check", help="Verify wiki connectivity and credentials")
+    p_check = sub.add_parser(
+        "check",
+        help="Verify wiki connectivity, credentials, DM-namespace gating, and the embeddings endpoint",
+    )
     p_check.set_defaults(func=cmd_check)
 
     args = parser.parse_args(argv)

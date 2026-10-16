@@ -18,6 +18,27 @@ is deliberate.
 - `skills/` — workflows as SKILL.md (canonical; `.claude/skills` and
   `.opencode/skill` are symlinks to it)
 
+## Wiki namespaces
+
+| Namespace | ID | Visibility | Use |
+|---|---|---|---|
+| Main | 0 | players | campaign lore (player-facing canon) |
+| `DM:` | 3000 | dm group only | spoilers, plot machinery, secret rules |
+| `DM talk:` | 3001 | dm group only | dated change logs for `DM:` pages; superseded design |
+| `Map:` | 2900 | players | interactive map data |
+| `Map talk:` | 2901 | players | map-data discussion |
+
+**`DM:` and `DM talk:` are both verified gated** (Lockdown; an anonymous API
+read of either namespace returns `accessdenied`; verified 2026-10-16, probe
+page `DM talk:Test Access Controls`). Write DM material to them freely, but if
+wiki configuration ever changes, re-verify before writing secrets: fetch a
+gated page anonymously (`curl "https://wiki.deeznuts.wiki/api.php?action=query&titles=DM:Home&prop=revisions&format=json"`
+must return `accessdenied`).
+
+Convention: a `DM:` page carries **current canon only** — when superseding
+design, move the old text to the page's `DM talk:` counterpart as a dated
+change log instead of leaving stale layers on the article.
+
 ## Commands
 
 ```bash
@@ -37,3 +58,14 @@ uv run dmc ingest-book book.md --title "..."   # add official material to the in
   summaries, `DMC_READ_ONLY`, no delete capability. Don't weaken them.
 - Secrets only in `.env` (gitignored). Personal roster in `campaign.yaml`
   (gitignored) and on the wiki as `Campaign:Roster`.
+
+## Writing style
+
+Default to plain wiki style for all generated prose: complete sentences, plain
+explanation, no literary effect. AI-isms are banned everywhere in the campaign,
+including in-character text — no negation-first antithesis, no rule-of-three
+tricolons, no aphoristic closers, no stacked em-dashes, no portentous
+abstraction, no empty intensifiers. Distinct NPC voices come from human technique
+(sentence shape, register, practical clutter), never from those tics. Use a
+non-plain style only on explicit DM request. Full rules: `AGENT.md` and the
+on-wiki `DM:Writing Style`.

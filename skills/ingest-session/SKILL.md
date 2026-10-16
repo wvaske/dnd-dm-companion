@@ -132,6 +132,12 @@ controlled), never on a player-visible page behind a styled "DM box." A box
 hides nothing; the namespace does. Keep the player-safe record (e.g. a usage log
 of things said at the table) public, and put the secret layer in `DM:`.
 
+`DM:` (id 3000) **and its talk namespace `DM talk:` (id 3001) are both verified
+gated** to the dm group (anonymous reads denied; verified 2026-10-16) — safe to
+write both. When a session supersedes design on a `DM:` page, move the old text
+to the page's `DM talk:` counterpart as a dated change log and leave the article
+carrying current canon only.
+
 ## Phase 4 — Write & integrate (the routing step matters)
 
 **Search before you write** — entities often already exist under a different or
@@ -268,3 +274,25 @@ Public-namespace pages state **current truth only**. Rules for every wiki write:
   history ("formerly the Gray Watch") is lore, not commentary — it stays.
 - **DM pages may keep change logs.** Rule evolution lives on
   `DM:Rules Change Log`, not on player-facing pages.
+
+## Writing style (mandatory)
+
+All prose you write — session logs, NPC and location pages, and any in-character
+text — uses **plain wiki style by default**: complete sentences, ordinary
+paragraphs, explanation over effect. Write like an encyclopedia editor, not a
+novelist.
+
+**AI-isms are banned in every register, including in-character dialogue and
+in-world documents.** Never use: negation-first antithesis ("not X, it is Y");
+the rule of three / escalating tricolons; "not just X but Y"; aphoristic fragment
+closers or reused summarizing formulas; self-aware asides about the writing;
+stacked em-dash appositives; metaphor as the spine of a passage; portentous
+abstraction ("a testament to," "in a world where"); empty intensifiers ("truly,"
+"simply," "utterly"); or making every speaker sound quotable.
+
+Give an NPC a distinct voice through **human technique** — sentence length and
+shape, vocabulary and register, what they dwell on or omit, practical clutter
+(dates, costs, digressions), and grammar — never through the banned constructions.
+When quoting a speaker, reproduce what they actually said; do not smooth it into
+machine cadence. Use a non-plain style only when the DM specifically asks for it.
+See `AGENT.md` and the on-wiki `DM:Writing Style` page.
