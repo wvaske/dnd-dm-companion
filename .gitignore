@@ -1,5 +1,6 @@
 # Secrets and personal campaign data
 .env
+.env.bak*
 campaign.yaml
 .claude/settings.local.json
 
@@ -19,4 +20,3 @@ venv/
 dist/
 build/
 .pytest_cache/
-uv.lock
